@@ -6,8 +6,9 @@
 <style>
 :root{--bg:#0b0907;--fg:#f4ece0;--mute:#a89b88;--accent:#e8a23a;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:radial-gradient(120% 90% at 50% 40%,#1d1510 0%,var(--bg) 70%) fixed;color:var(--fg);font-family:Inter,system-ui,sans-serif;font-weight:300}
-canvas{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;font-weight:300}
+canvas{position:fixed;left:0;top:0;width:100%;height:100vh;height:100lvh;display:block;z-index:0}
+body::before{content:"";position:fixed;left:0;top:0;width:100%;height:100vh;height:100lvh;z-index:-1;background:radial-gradient(120% 90% at 50% 40%,#1d1510 0%,var(--bg) 70%)}
 nav{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:3;display:flex;justify-content:space-between;padding:22px 6vw;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--mute)}
 nav b{color:var(--fg);font-weight:500}
 section{position:relative;z-index:2;min-height:100vh;display:flex;align-items:flex-end;padding:0 6vw 12vh;pointer-events:none}
@@ -20,7 +21,7 @@ p{color:var(--mute);line-height:1.7;font-size:15px;margin:0}
 .r{justify-content:flex-end;text-align:right}
 .hint{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:3;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--mute);transition:opacity .6s}
 #ld{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--mute);transition:opacity .8s}
-.mus{position:fixed;right:6vw;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:4;pointer-events:auto;cursor:pointer;font:400 11px Inter,system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);background:rgba(11,9,7,.55);border:1px solid rgba(244,236,224,.22);border-radius:999px;padding:10px 16px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:color .3s,border-color .3s}
+.mus{position:fixed;right:6vw;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:4;pointer-events:auto;cursor:pointer;font:400 11px Inter,system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);background:rgba(11,9,7,.8);border:1px solid rgba(244,236,224,.22);border-radius:999px;padding:10px 16px;transition:color .3s,border-color .3s}
 .mus.on{color:var(--accent);border-color:var(--accent)}
 @media(max-width:700px){section,.r{justify-content:flex-start;text-align:left;padding-bottom:14vh}}
 </style></head><body>
@@ -39,8 +40,8 @@ p{color:var(--mute);line-height:1.7;font-size:15px;margin:0}
 <script>
 const $=id=>document.getElementById(id),lerp=(a,b,t)=>a+(b-a)*t,sm=t=>t*t*(3-2*t),cl=(x,a,b)=>Math.min(b,Math.max(a,x));
 const buf=id=>{const s=atob($(id).textContent.trim()),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer};
-const ren=new THREE.WebGLRenderer({canvas:$('c'),antialias:true,alpha:true});
-ren.setPixelRatio(Math.min(devicePixelRatio,2));ren.outputEncoding=THREE.sRGBEncoding;
+const ren=new THREE.WebGLRenderer({canvas:$('c'),antialias:true,alpha:true,powerPreference:'high-performance'});
+ren.setPixelRatio(Math.min(devicePixelRatio,innerWidth<700?1.5:2));ren.outputEncoding=THREE.sRGBEncoding;
 ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.15;
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(35,1,.1,100);
 scene.add(new THREE.HemisphereLight(0xfff2e0,0x2a1a10,1.0));
@@ -67,13 +68,16 @@ Promise.all([parse('dp'),parse('db')]).then(([p,b])=>{
   b.scene.traverse(o=>{if(o.isMesh)o.material.toneMapped=false});pizza=place(p,'pizza',0);burger=place(b,'burger',BX);pizza.rotation.x=.25;
   $('ld').style.opacity=0;setTimeout(()=>$('ld').remove(),900);frame()
 }).catch(e=>{$('ld').textContent='Could not load models';console.error(e)});
-function size(){const w=innerWidth,h=innerHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+let W=innerWidth,H=innerHeight,AW=0,AH=0,MAXS=1;
+function size(){const w=innerWidth,h=innerHeight;if(w!==W){W=w;H=h}else if(h>H)H=h;
+  if(W!==AW||H!==AH){AW=W;AH=H;ren.setSize(W,H,false);cam.aspect=W/H;cam.updateProjectionMatrix()}
+  MAXS=Math.max(1,document.documentElement.scrollHeight-H)}
 addEventListener('resize',size);size();
-addEventListener('scroll',()=>{const h=document.documentElement.scrollHeight-innerHeight;tgt=h>0?cl(scrollY/h,0,1):0;$('hint').style.opacity=scrollY>40?0:1},{passive:true});
+addEventListener('scroll',()=>{$('hint').style.opacity=scrollY>40?0:1},{passive:true});
 const io=new IntersectionObserver(es=>es.forEach(e=>e.target.classList.toggle('in',e.isIntersecting)),{threshold:.35});
 document.querySelectorAll('.panel').forEach(p=>io.observe(p));
 function frame(){
-  requestAnimationFrame(frame);const now=performance.now(),dt=Math.min((now-(frame.t||now))/1000,.05);frame.t=now;cur+=(tgt-cur)*(1-Math.exp(-dt*6));
+  requestAnimationFrame(frame);const now=performance.now(),dt=Math.min((now-(frame.t||now))/1000,.05);frame.t=now;tgt=cl(scrollY/MAXS,0,1);cur+=(tgt-cur)*(1-Math.exp(-dt*5));
   const t=sm(cl(cur/.62,0,1)),arc=Math.sin(Math.PI*t),port=innerWidth<innerHeight;
   const tx=lerp(0,BX,t),d=(port?11:8)+arc*3.5,a=-(1-t)*.15;
   cam.position.set(tx+Math.sin(a)*d,lerp(3.4,2.2,t)+arc*2.2,Math.cos(a)*d);
